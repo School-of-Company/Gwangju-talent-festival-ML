@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+data/*.csv
+!data/sample_dataset.csv
+
+models/*
+!models/.gitkeep
