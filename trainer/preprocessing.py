@@ -19,9 +19,9 @@ def load_and_preprocess(csv_path: str) -> tuple:
     X, feature_cols = _build_features(df)
     y = df["label"].reset_index(drop=True)
     categories = {
-        "domainCategories":     sorted(df["domain"].unique().tolist()),
-        "metricNameCategories": sorted(df["metricName"].unique().tolist()),
-        "dayOfWeekCategories":  sorted(df["dayOfWeek"].astype(str).unique().tolist()),
+        "domainCategories":     sorted(VALID_DOMAINS),
+        "metricNameCategories": sorted(VALID_METRIC_NAMES),
+        "dayOfWeekCategories":  [str(i) for i in range(1, 8)],
     }
     return X, y, feature_cols, categories
 
@@ -78,8 +78,11 @@ def _validate_numeric_ranges(df: pd.DataFrame) -> None:
 
 
 def _build_features(df: pd.DataFrame) -> tuple:
-    cat_df = df[CATEGORICAL_COLS].astype(str)
-    dummies = pd.get_dummies(cat_df, prefix=CATEGORICAL_COLS)
+    cat_df = pd.DataFrame()
+    cat_df["domain"]     = pd.Categorical(df["domain"],                    categories=sorted(VALID_DOMAINS))
+    cat_df["metricName"] = pd.Categorical(df["metricName"],                categories=sorted(VALID_METRIC_NAMES))
+    cat_df["dayOfWeek"]  = pd.Categorical(df["dayOfWeek"].astype(str),     categories=[str(i) for i in range(1, 8)])
+    dummies = pd.get_dummies(cat_df, prefix=CATEGORICAL_COLS, dtype=int)
     numeric = df[NUMERIC_COLS].reset_index(drop=True)
     X = pd.concat([numeric, dummies], axis=1)
     return X, list(X.columns)

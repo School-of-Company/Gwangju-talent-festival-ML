@@ -7,6 +7,10 @@ def compute_metrics(
     total_rows: int,
     train_rows: int,
 ) -> dict:
+    if len(y_true) != len(y_pred):
+        raise ValueError(
+            f"Length mismatch: y_true ({len(y_true)}) and y_pred ({len(y_pred)}) must have the same length."
+        )
     tp = sum(1 for t, p in zip(y_true, y_pred) if t == "anomaly" and p == "anomaly")
     fp = sum(1 for t, p in zip(y_true, y_pred) if t == "normal"  and p == "anomaly")
     tn = sum(1 for t, p in zip(y_true, y_pred) if t == "normal"  and p == "normal")

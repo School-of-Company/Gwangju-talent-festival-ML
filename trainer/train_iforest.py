@@ -43,6 +43,11 @@ def main():
 
     normal_mask = y == "normal"
     X_train = X[normal_mask].reset_index(drop=True)
+    if len(X_train) == 0:
+        raise ValueError(
+            "No training data found with label 'normal'. "
+            "Isolation Forest requires at least one normal sample to train."
+        )
     print(f"[2/5] Training on {len(X_train)} normal rows (total {len(X)} rows)")
 
     model = IsolationForest(
