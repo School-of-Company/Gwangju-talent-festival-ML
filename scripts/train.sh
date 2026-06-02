@@ -14,10 +14,11 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
+PYTHON_BIN="python"
 if [ -d ".venv" ]; then
-    source .venv/bin/activate
+    PYTHON_BIN=".venv/bin/python"
 fi
 
-python trainer/train_iforest.py \
+"$PYTHON_BIN" trainer/train_iforest.py \
     --dataset-path "$DATASET_PATH" \
     --output-dir "$OUTPUT_DIR"

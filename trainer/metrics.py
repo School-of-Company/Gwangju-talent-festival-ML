@@ -1,5 +1,7 @@
 from typing import List
 
+from sklearn.metrics import confusion_matrix
+
 
 def compute_metrics(
     y_true: List[str],
@@ -11,10 +13,7 @@ def compute_metrics(
         raise ValueError(
             f"Length mismatch: y_true ({len(y_true)}) and y_pred ({len(y_pred)}) must have the same length."
         )
-    tp = sum(1 for t, p in zip(y_true, y_pred) if t == "anomaly" and p == "anomaly")
-    fp = sum(1 for t, p in zip(y_true, y_pred) if t == "normal"  and p == "anomaly")
-    tn = sum(1 for t, p in zip(y_true, y_pred) if t == "normal"  and p == "normal")
-    fn = sum(1 for t, p in zip(y_true, y_pred) if t == "anomaly" and p == "normal")
+    tn, fp, fn, tp = map(int, confusion_matrix(y_true, y_pred, labels=["normal", "anomaly"]).ravel())
 
     precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
     recall    = tp / (tp + fn) if (tp + fn) > 0 else 0.0

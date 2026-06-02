@@ -75,7 +75,7 @@ def main():
             "iforest_predict_-1": "anomaly",
         },
         "metadata": {
-            "contamination":        str(contamination),
+            "contamination":        contamination,
             "n_estimators":         args.n_estimators,
             "random_state":         42,
             "train_rows":           len(X_train),
