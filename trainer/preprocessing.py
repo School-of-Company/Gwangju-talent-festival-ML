@@ -64,7 +64,9 @@ def _validate_categorical_values(df: pd.DataFrame) -> None:
 
 def _validate_numeric_ranges(df: pd.DataFrame) -> None:
     for col in ["dayOfWeek", "hourOfDay"]:
-        if not pd.api.types.is_integer_dtype(df[col]) and ((df[col] % 1) != 0).any():
+        if not pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_bool_dtype(df[col]):
+            raise ValueError(f"{col} must be a numeric integer type.")
+        if (df[col] % 1 != 0).any():
             raise ValueError(f"{col} must contain only integer values.")
 
     bad_dow = df[(df["dayOfWeek"] < 1) | (df["dayOfWeek"] > 7)]
@@ -87,6 +89,6 @@ def _build_features(df: pd.DataFrame) -> tuple:
     cat_df["metricName"] = pd.Categorical(df["metricName"],                categories=sorted(VALID_METRIC_NAMES))
     cat_df["dayOfWeek"]  = pd.Categorical(df["dayOfWeek"].astype(int).astype(str), categories=[str(i) for i in range(1, 8)])
     dummies = pd.get_dummies(cat_df, prefix=CATEGORICAL_COLS, dtype=int)
-    numeric = df[NUMERIC_COLS].reset_index(drop=True)
+    numeric = df[NUMERIC_COLS]
     X = pd.concat([numeric, dummies], axis=1)
     return X, list(X.columns)
