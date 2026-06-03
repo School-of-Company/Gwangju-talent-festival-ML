@@ -65,11 +65,11 @@ print('predictedLabel:', d['predictedLabel'])
 " && check "/anomaly-score anomaly input" 0 || check "/anomaly-score anomaly input" 1
 
 echo ""
-echo "--- POST /anomaly-score (invalid domain, expect 422) ---"
+echo "--- POST /anomaly-score (invalid domain, expect 400) ---"
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE_URL/anomaly-score" \
     -H "Content-Type: application/json" \
     -d '{"domain":"INVALID","metricName":"failure_rate","value":0.01,"hourOfDay":9,"dayOfWeek":1}')
-[ "$HTTP_CODE" = "422" ] && check "/anomaly-score invalid domain -> 422" 0 || check "/anomaly-score invalid domain -> 422" 1
+[ "$HTTP_CODE" = "400" ] && check "/anomaly-score invalid domain -> 400" 0 || check "/anomaly-score invalid domain -> 400" 1
 
 echo ""
 echo "--- POST /anomaly-score (NaN value, expect 422) ---"
