@@ -15,7 +15,7 @@ _artifact: Optional["ModelArtifact"] = None
 class ModelArtifact:
     def __init__(self, raw: dict, model_path: str):
         self.model = raw["model"]
-        self.feature_columns: list = raw.get("feature_columns") or raw["metadata"]["featureColumns"]
+        self.feature_columns: list = raw.get("feature_columns", raw["metadata"]["featureColumns"])
         meta = raw["metadata"]
         self.domain_categories: list = meta["domainCategories"]
         self.metric_name_categories: list = meta["metricNameCategories"]

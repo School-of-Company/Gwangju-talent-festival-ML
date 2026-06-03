@@ -67,9 +67,9 @@ def anomaly_score(req: AnomalyScoreRequest):
         raise HTTPException(status_code=503, detail="Model not loaded. Check MODEL_PATH environment variable.")
 
     if req.domain not in artifact.domain_categories:
-        raise HTTPException(status_code=422, detail=f"Invalid domain: {req.domain}. Allowed: {artifact.domain_categories}")
+        raise HTTPException(status_code=400, detail=f"Invalid domain: {req.domain}. Allowed: {artifact.domain_categories}")
     if req.metricName not in artifact.metric_name_categories:
-        raise HTTPException(status_code=422, detail=f"Invalid metricName: {req.metricName}. Allowed: {artifact.metric_name_categories}")
+        raise HTTPException(status_code=400, detail=f"Invalid metricName: {req.metricName}. Allowed: {artifact.metric_name_categories}")
 
     score, label = run_inference(
         artifact,

@@ -1,36 +1,14 @@
-import math
 from typing import List, Literal, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 
 
 class AnomalyScoreRequest(BaseModel):
     domain: str
     metricName: str
-    value: float
-    hourOfDay: int
-    dayOfWeek: int
-
-    @field_validator("value")
-    @classmethod
-    def validate_value(cls, v: float) -> float:
-        if not math.isfinite(v):
-            raise ValueError("value must be a finite number (NaN and Infinity are not allowed)")
-        return v
-
-    @field_validator("hourOfDay")
-    @classmethod
-    def validate_hour(cls, v: int) -> int:
-        if not 0 <= v <= 23:
-            raise ValueError(f"hourOfDay must be 0-23, got {v}")
-        return v
-
-    @field_validator("dayOfWeek")
-    @classmethod
-    def validate_dow(cls, v: int) -> int:
-        if not 1 <= v <= 7:
-            raise ValueError(f"dayOfWeek must be 1-7 (Java DayOfWeek), got {v}")
-        return v
+    value: float = Field(allow_inf_nan=False)
+    hourOfDay: int = Field(ge=0, le=23)
+    dayOfWeek: int = Field(ge=1, le=7)
 
 
 class AnomalyScoreResponse(BaseModel):

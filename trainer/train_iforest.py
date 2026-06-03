@@ -59,7 +59,7 @@ def main():
 
     print("[3/5] Computing predictions and anomaly scores")
     raw_preds   = model.predict(X)
-    anom_scores = model.score_samples(X)
+    anom_scores = -model.score_samples(X)
     pred_labels = ["anomaly" if p == -1 else "normal" for p in raw_preds]
 
     print("[4/5] Computing metrics")
