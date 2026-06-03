@@ -1,6 +1,7 @@
 services:
   ml-api:
     build: .
+    image: gwangju-talent-festival-ml:latest
     ports:
       - "8000:8000"
     volumes:
