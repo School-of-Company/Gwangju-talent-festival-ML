@@ -1,12 +1,12 @@
 import math
-from typing import Any, Literal, List, Union
+from typing import List, Literal, Union
 
 from pydantic import BaseModel, field_validator
 
 
 class AnomalyScoreRequest(BaseModel):
-    domain: Literal["SEAT", "JUDGE"]
-    metricName: Literal["failure_rate", "p95_duration"]
+    domain: str
+    metricName: str
     value: float
     hourOfDay: int
     dayOfWeek: int
