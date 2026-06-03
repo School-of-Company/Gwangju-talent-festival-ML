@@ -35,7 +35,7 @@ def run_inference(
     day_of_week: int,
 ) -> tuple[float, str]:
     X = build_feature_row(artifact, domain, metric_name, value, hour_of_day, day_of_week)
-    raw_pred = artifact.model.predict(X)[0]
-    predicted_label = "anomaly" if raw_pred == -1 else "normal"
-    anomaly_score = float(-artifact.model.decision_function(X)[0])
+    score = float(artifact.model.decision_function(X)[0])
+    predicted_label = "anomaly" if score < 0 else "normal"
+    anomaly_score = -score
     return anomaly_score, predicted_label

@@ -78,6 +78,6 @@ def anomaly_score(req: AnomalyScoreRequest):
     return AnomalyScoreResponse(
         anomalyScore=score,
         predictedLabel=label,
-        modelVersion=Path(artifact.model_path).parent.name,
+        modelVersion=Path(artifact.model_path).parent.name or "unknown",
         modelLoaded=True,
     )
