@@ -309,7 +309,7 @@ cp .env.example .env
 |---|---|---|
 | MODEL_PATH | /app/models/iforest-v1/model.joblib | 컨테이너 내부 경로 기준 |
 | PORT | 8000 | host 외부 노출 포트 (컨테이너 내부 uvicorn은 8000 고정) |
-| LOG_LEVEL | info | uvicorn 로그 레벨 |
+| LOG_LEVEL | info | uvicorn 로그 레벨 (소문자 필수: info, debug, warning, error, critical) |
 
 production에서는 `.env` 파일이 반드시 있어야 한다. 없으면 `deploy.sh`가 즉시 실패한다.
 
@@ -337,9 +337,10 @@ bash scripts/deploy.sh
 
 1. `.env` 존재 여부 확인 (없으면 실패)
 2. `git pull --ff-only origin main`
-3. `docker compose -f docker-compose.prod.yml up -d --build`
-4. `/health` HTTP 200 확인 (최대 30초)
-5. dangling 이미지 정리
+3. `docker compose build ml-api` 로 새 이미지 빌드
+4. `docker compose -f docker-compose.prod.yml up -d --no-build` 로 컨테이너 교체
+5. `/health` HTTP 200 확인 (최대 30s), 실패 시 이전 이미지로 자동 롤백
+6. dangling 이미지 정리
 
 ### 5. GitHub Secrets 설정
 
@@ -372,7 +373,7 @@ main push -> deploy.yml 트리거 -> SSH 접속 -> git pull --ff-only origin mai
 CD 검증 기준은 `/health` HTTP 200이다.
 
 - `modelLoaded: true` — 모델이 로드된 정상 상태
-- `modelLoaded: false` — 서버는 기동 중이나 model.joblib 미배치 상태. **배포 성공으로 간주한다.**
+- `modelLoaded: false` — 서버는 기동 중이나 model.joblib 미배치 상태. **배포 성공으로 간주한다.** deploy.sh가 WARNING 메시지를 출력한다.
 - `/anomaly-score`는 model.joblib이 없으면 503을 반환한다.
 
 ```bash

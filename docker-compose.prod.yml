@@ -1,6 +1,7 @@
 services:
   ml-api:
     build: .
+    image: ml-api-prod:latest
     ports:
       - "${PORT:-8000}:8000"
     volumes:
@@ -9,10 +10,9 @@ services:
       - .env
     environment:
       - MODEL_PATH=${MODEL_PATH:-/app/models/iforest-v1/model.joblib}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
     command: >
-      uvicorn app.main:app
+      sh -c "uvicorn app.main:app
       --host 0.0.0.0
       --port 8000
-      --log-level ${LOG_LEVEL:-info}
+      --log-level $${LOG_LEVEL:-info}"
     restart: unless-stopped

@@ -22,6 +22,9 @@ jobs:
           key: ${{ secrets.ML_SERVER_SSH_KEY }}
           port: ${{ secrets.ML_SERVER_PORT || '22' }}
           script_stop: true
+          envs: DEPLOY_PATH
           script: |
-            cd "${{ secrets.ML_SERVER_DEPLOY_PATH }}"
+            cd "$DEPLOY_PATH"
             bash scripts/deploy.sh
+        env:
+          DEPLOY_PATH: ${{ secrets.ML_SERVER_DEPLOY_PATH }}
