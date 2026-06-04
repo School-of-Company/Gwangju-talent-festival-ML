@@ -14,7 +14,8 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 PORT="${PORT:-8000}"
 BASE_URL="http://localhost:${PORT}"
 
-echo "[1/4] git pull --ff-only origin main"
+echo "[1/4] git checkout main && git pull --ff-only origin main"
+git checkout main
 git pull --ff-only origin main
 
 echo "[2/4] docker compose up --build"
@@ -37,4 +38,5 @@ done
 echo "[4/4] cleanup dangling images"
 docker image prune -f --filter "dangling=true" || true
 
-echo "Deploy complete: $(curl -s "$BASE_URL/health")"
+health_response=$(curl -sf "$BASE_URL/health" || echo "healthy (response body unavailable)")
+echo "Deploy complete: $health_response"
