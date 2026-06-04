@@ -1,42 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ ! -f .env ]; then
-    echo "ERROR: .env file not found. Copy .env.example to .env and configure it first."
-    exit 1
-fi
-
-set -a
-source .env
-set +a
-
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
-PORT="${PORT:-8000}"
-BASE_URL="http://localhost:${PORT}"
-
-echo "[1/4] git checkout main && git pull --ff-only origin main"
-git checkout main
-git pull --ff-only origin main
-
-echo "[2/4] docker compose up --build"
-docker compose -f "$COMPOSE_FILE" up -d --build
-
-echo "[3/4] health check (max 30s)"
-health_response=""
-for i in $(seq 1 30); do
-    if health_response=$(curl -sf "$BASE_URL/health" 2>/dev/null); then
-        echo "Service ready at attempt $i"
-        break
-    fi
-    if [ "$i" -eq 30 ]; then
-        echo "ERROR: health check failed after 30s"
-        docker compose -f "$COMPOSE_FILE" logs ml-api
+{
+    if [ ! -f .env ]; then
+        echo "ERROR: .env file not found. Copy .env.example to .env and configure it first."
         exit 1
     fi
-    sleep 1
-done
 
-echo "[4/4] cleanup dangling images"
-docker image prune -f --filter "dangling=true" || true
+    set -a
+    source .env
+    set +a
 
-echo "Deploy complete: ${health_response:-healthy (response body unavailable)}"
+    COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
+    PORT="${PORT:-8000}"
+    BASE_URL="http://localhost:${PORT}"
+
+    echo "[1/4] git checkout main && git pull --ff-only origin main"
+    git checkout main
+    git pull --ff-only origin main
+
+    echo "[2/4] docker compose up --build"
+    docker compose -f "$COMPOSE_FILE" up -d --build
+
+    echo "[3/4] health check (max 30s)"
+    health_response=""
+    for i in {1..30}; do
+        if health_response=$(curl -sf --connect-timeout 2 --max-time 3 "$BASE_URL/health" 2>/dev/null); then
+            echo "Service ready at attempt $i"
+            break
+        fi
+        if [ "$i" -eq 30 ]; then
+            echo "ERROR: health check failed after 30s"
+            docker compose -f "$COMPOSE_FILE" logs ml-api
+            exit 1
+        fi
+        sleep 1
+    done
+
+    echo "[4/4] cleanup dangling images"
+    docker image prune -f --filter "dangling=true" || true
+
+    echo "Deploy complete: ${health_response:-healthy (response body unavailable)}"
+}
