@@ -22,8 +22,9 @@ echo "[2/4] docker compose up --build"
 docker compose -f "$COMPOSE_FILE" up -d --build
 
 echo "[3/4] health check (max 30s)"
+health_response=""
 for i in $(seq 1 30); do
-    if curl -sf "$BASE_URL/health" > /dev/null 2>&1; then
+    if health_response=$(curl -sf "$BASE_URL/health" 2>/dev/null); then
         echo "Service ready at attempt $i"
         break
     fi
@@ -38,5 +39,4 @@ done
 echo "[4/4] cleanup dangling images"
 docker image prune -f --filter "dangling=true" || true
 
-health_response=$(curl -sf "$BASE_URL/health" || echo "healthy (response body unavailable)")
-echo "Deploy complete: $health_response"
+echo "Deploy complete: ${health_response:-healthy (response body unavailable)}"
