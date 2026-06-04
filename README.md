@@ -322,6 +322,8 @@ production에서는 `.env` 파일이 반드시 있어야 한다. 없으면 `depl
 
 모델 파일이 없어도 서버는 기동된다. `/health`가 `modelLoaded: false`를 반환하고 `/anomaly-score`는 503을 반환한다.
 
+서버에서 trainer를 실행해 model.joblib을 생성하는 작업은 이번 PR 범위가 아니다. 모델 파일은 별도 절차로 서버에 배치한다.
+
 ### 4. 수동 배포 실행
 
 서버에 SSH 접속 후 아래 명령으로 배포한다.
@@ -367,7 +369,11 @@ main push -> deploy.yml 트리거 -> SSH 접속 -> git pull --ff-only origin mai
 
 ### 7. 배포 후 health check
 
-`/health` HTTP 200이면 배포 성공으로 간주한다. `modelLoaded: false`도 배포 성공이다.
+CD 검증 기준은 `/health` HTTP 200이다.
+
+- `modelLoaded: true` — 모델이 로드된 정상 상태
+- `modelLoaded: false` — 서버는 기동 중이나 model.joblib 미배치 상태. **배포 성공으로 간주한다.**
+- `/anomaly-score`는 model.joblib이 없으면 503을 반환한다.
 
 ```bash
 curl http://localhost:8000/health
@@ -387,3 +393,4 @@ docker compose -f docker-compose.prod.yml logs ml-api
 - Spring 서버 연동
 - model registry
 - 자동 재학습 파이프라인
+- 서버에서 trainer 실행 (model.joblib 생성은 별도 절차)
