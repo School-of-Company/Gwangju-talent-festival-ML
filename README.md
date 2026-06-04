@@ -30,6 +30,12 @@ models/
 scripts/
   train.sh             - trainer 편의 스크립트
   smoke_test.sh        - API smoke test 스크립트
+  deploy.sh            - 서버 배포 스크립트
+.github/workflows/
+  ci.yml               - CI (테스트, Docker 빌드)
+  deploy.yml           - CD (main push 시 서버 자동 배포)
+docker-compose.yml         - 개발/로컬용 Compose
+docker-compose.prod.yml    - production 배포용 Compose
 ```
 
 ---
@@ -266,9 +272,118 @@ docker run --rm \
 
 ---
 
+## 배포
+
+### 1. 서버 사전 준비 사항
+
+서버에 아래 소프트웨어가 설치되어 있어야 한다.
+
+- Docker Engine
+- Docker Compose v2 (`docker compose` 명령)
+- git
+- curl
+
+최초 1회 서버에서 레포를 clone한다. 이후 배포는 `git pull` 방식으로 동작한다.
+
+```bash
+git clone https://github.com/School-of-Company/Gwangju-talent-festival-ML.git <deploy-path>
+cd <deploy-path>
+cp .env.example .env
+```
+
+서버 준비 상태 확인:
+
+```bash
+ssh <user>@<host> -p <port> "docker --version && docker compose version && git --version"
+```
+
+### 2. .env 설정
+
+`.env.example`을 복사한 뒤 서버 환경에 맞게 편집한다.
+
+```bash
+cp .env.example .env
+```
+
+| 변수 | 기본값 | 설명 |
+|---|---|---|
+| MODEL_PATH | /app/models/iforest-v1/model.joblib | 컨테이너 내부 경로 기준 |
+| PORT | 8000 | host 외부 노출 포트 (컨테이너 내부 uvicorn은 8000 고정) |
+| LOG_LEVEL | info | uvicorn 로그 레벨 |
+
+production에서는 `.env` 파일이 반드시 있어야 한다. 없으면 `deploy.sh`가 즉시 실패한다.
+
+### 3. model.joblib 배치 방법
+
+실제 운영 모델은 Git에 커밋하지 않는다. 서버 디렉토리에 직접 배치한다.
+
+- 서버 호스트 경로: `<deploy-path>/models/iforest-v1/model.joblib`
+- 컨테이너 내부 경로: `/app/models/iforest-v1/model.joblib` (volume mount로 연결)
+
+모델 파일이 없어도 서버는 기동된다. `/health`가 `modelLoaded: false`를 반환하고 `/anomaly-score`는 503을 반환한다.
+
+### 4. 수동 배포 실행
+
+서버에 SSH 접속 후 아래 명령으로 배포한다.
+
+```bash
+cd <deploy-path>
+bash scripts/deploy.sh
+```
+
+`deploy.sh` 동작 순서:
+
+1. `.env` 존재 여부 확인 (없으면 실패)
+2. `git pull --ff-only origin main`
+3. `docker compose -f docker-compose.prod.yml up -d --build`
+4. `/health` HTTP 200 확인 (최대 30초)
+5. dangling 이미지 정리
+
+### 5. GitHub Secrets 설정
+
+레포 Settings -> Secrets and variables -> Actions 에서 아래 Secrets를 추가한다.
+
+| Secret | 설명 | 필수 |
+|---|---|---|
+| ML_SERVER_HOST | 서버 IP 또는 도메인 | 필수 |
+| ML_SERVER_USER | SSH 접속 사용자명 | 필수 |
+| ML_SERVER_SSH_KEY | SSH 개인키 전체 내용 (-----BEGIN ... 포함) | 필수 |
+| ML_SERVER_DEPLOY_PATH | 서버 내 프로젝트 절대경로 | 필수 |
+| ML_SERVER_PORT | SSH 포트, 미설정 시 22 사용 | 선택 |
+
+### 6. GitHub Actions 배포 흐름
+
+main 브랜치에 push되면 `deploy.yml`이 자동 실행된다.
+
+```
+main push -> deploy.yml 트리거 -> SSH 접속 -> git pull --ff-only origin main
+-> docker compose -f docker-compose.prod.yml up -d --build
+-> /health HTTP 200 확인
+```
+
+전제: main 브랜치는 CI 통과 후 merge되는 branch protection 구조.
+
+동시 배포 방지를 위해 `concurrency` 설정이 적용되어 있다. 이전 배포가 진행 중이면 취소하고 최신 push로 재시작한다.
+
+### 7. 배포 후 health check
+
+`/health` HTTP 200이면 배포 성공으로 간주한다. `modelLoaded: false`도 배포 성공이다.
+
+```bash
+curl http://localhost:8000/health
+```
+
+### 8. 장애 시 로그 확인
+
+```bash
+docker compose -f docker-compose.prod.yml logs ml-api
+```
+
+---
+
 ## 현재 제외 범위
 
 - POST /anomaly-score/batch (배치 추론)
 - Spring 서버 연동
-- GPU 서버 CI/CD
 - model registry
+- 자동 재학습 파이프라인
