@@ -11,8 +11,8 @@ services:
     environment:
       - MODEL_PATH=${MODEL_PATH:-/app/models/iforest-v1/model.joblib}
     command: >
-      sh -c "uvicorn app.main:app
+      uvicorn app.main:app
       --host 0.0.0.0
       --port 8000
-      --log-level $${LOG_LEVEL:-info}"
+      --log-level ${LOG_LEVEL:-info}
     restart: unless-stopped

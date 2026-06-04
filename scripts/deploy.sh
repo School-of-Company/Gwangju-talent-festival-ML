@@ -43,7 +43,7 @@ set -euo pipefail
         if [ "$i" -eq 30 ]; then
             echo "ERROR: health check failed after 30s. Rolling back..."
             docker compose -f "$COMPOSE_FILE" logs ml-api
-            docker compose -f "$COMPOSE_FILE" down
+            docker compose -f "$COMPOSE_FILE" stop ml-api
             if docker tag ml-api-prod:rollback ml-api-prod:latest 2>/dev/null; then
                 docker compose -f "$COMPOSE_FILE" up -d --no-build
                 echo "Rollback complete. Previous image restored."
@@ -55,7 +55,7 @@ set -euo pipefail
         sleep 1
     done
 
-    if echo "$health_response" | grep -q '"modelLoaded":false'; then
+    if echo "$health_response" | grep -q '"modelLoaded": *false'; then
         echo "WARNING: modelLoaded=false — model.joblib not found. /anomaly-score will return 503."
     fi
 
