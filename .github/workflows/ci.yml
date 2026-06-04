@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Train sample model
+        run: |
+          python trainer/train_iforest.py \
+            --dataset-path ./data/sample_dataset.csv \
+            --output-dir ./models/iforest-v1
+
+      - name: Validate metrics.json
+        run: |
+          python - <<'PY'
+          import json
+          with open("./models/iforest-v1/metrics.json") as f:
+              m = json.load(f)
+          required = [
+              "totalRows", "trainRows", "normalRows", "anomalyRows",
+              "precision", "recall", "f1", "falsePositiveRate",
+              "truePositive", "falsePositive", "trueNegative", "falseNegative",
+          ]
+          missing = [k for k in required if k not in m]
+          assert not missing, f"Missing keys: {missing}"
+          assert m["totalRows"] == 40
+          assert m["trainRows"] == 35
+          assert m["normalRows"] + m["anomalyRows"] == m["totalRows"]
+          print("metrics.json OK")
+          PY
+
+      - name: Validate predictions.csv
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          df = pd.read_csv("./models/iforest-v1/predictions.csv")
+          assert list(df.columns) == ["trueLabel", "predictedLabel", "anomalyScore"], list(df.columns)
+          assert set(df["trueLabel"].unique()).issubset({"normal", "anomaly"})
+          assert set(df["predictedLabel"].unique()).issubset({"normal", "anomaly"})
+          print(f"predictions.csv OK, rows: {len(df)}")
+          PY
+
+      - name: Start FastAPI server
+        run: |
+          MODEL_PATH=./models/iforest-v1/model.joblib \
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Server ready at attempt $i"
+              break
+            fi
+            [ "$i" -eq 30 ] && echo "Server did not start" && exit 1
+            sleep 1
+          done
+
+      - name: Run smoke tests
+        run: bash scripts/smoke_test.sh http://localhost:8000
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies (for trainer)
+        run: pip install -r requirements.txt
+
+      - name: Train sample model
+        run: |
+          python trainer/train_iforest.py \
+            --dataset-path ./data/sample_dataset.csv \
+            --output-dir ./models/iforest-v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gwangju-talent-festival-ml:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start docker compose
+        run: |
+          docker compose up -d --no-build
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Container ready at attempt $i"
+              break
+            fi
+            [ "$i" -eq 30 ] && echo "Container did not become ready" && docker compose logs ml-api && exit 1
+            sleep 1
+          done
+
+      - name: Docker health check
+        run: curl -sf http://localhost:8000/health | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok' and d['modelLoaded']==True, d"
+
+      - name: Docker anomaly-score check
+        run: |
+          curl -sf -X POST http://localhost:8000/anomaly-score \
+            -H "Content-Type: application/json" \
+            -d '{"domain":"SEAT","metricName":"failure_rate","value":0.01,"hourOfDay":9,"dayOfWeek":1}' \
+          | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['predictedLabel'] in ('normal','anomaly'), d; print('OK:', d)"
+
+      - name: Stop docker compose
+        if: always()
+        run: docker compose down

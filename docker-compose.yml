@@ -1,9 +1,12 @@
 services:
   ml-api:
     build: .
+    image: gwangju-talent-festival-ml:latest
     ports:
       - "8000:8000"
     volumes:
       - ./data:/app/data
       - ./models:/app/models
+    environment:
+      - MODEL_PATH=./models/iforest-v1/model.joblib
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
