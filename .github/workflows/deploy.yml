@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ml-server-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ML_SERVER_HOST }}
+          username: ${{ secrets.ML_SERVER_USER }}
+          key: ${{ secrets.ML_SERVER_SSH_KEY }}
+          port: ${{ secrets.ML_SERVER_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH
+          script: |
+            cd "$DEPLOY_PATH"
+            bash scripts/deploy.sh
+        env:
+          DEPLOY_PATH: ${{ secrets.ML_SERVER_DEPLOY_PATH }}
